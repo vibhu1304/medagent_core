@@ -11,34 +11,33 @@ def load_generation_model():
     return tokenizer, model, device
 
 def generate_answer(query, context):
-    """STRICT MODE: Fast factual extraction"""
+    """Universal document assistant using defined instructions"""
     tokenizer, model, device = load_generation_model()
-    prompt = f"Using ONLY the context, answer briefly.\nContext: {context}\nQuestion: {query}"
-    inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
-    
-    # num_beams=2 is much faster than 4 or 5
-    outputs = model.generate(**inputs, max_new_tokens=150, num_beams=2) 
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
+    prompt = f"""You are an intelligent document analysis assistant.
 
-def generate_hybrid_answer(query, context):
-    """HYBRID MODE: For analysis and reasoning"""
-    tokenizer, model, device = load_generation_model()
-    prompt = f"Analyze the context and answer: {query}\n\nContext: {context}\n\nAnalysis:"
+Follow these rules carefully:
+1. If the answer is present in the document context: Provide the answer using the document information.
+2. If the question is related but information is NOT present: State that the document does not contain this information, then answer using general knowledge.
+3. If the question is unrelated: Ignore the context and answer using general knowledge.
+
+Structure your response EXACTLY as:
+Answer: <your answer>
+Source: <"Document" or "General Knowledge">
+
+Document Context:
+{context}
+
+User Question:
+{query}
+
+Response:"""
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True, max_length=1024).to(device)
     
     outputs = model.generate(
         **inputs, 
-        max_new_tokens=300, 
-        num_beams=2, 
-        repetition_penalty=1.2,
+        max_new_tokens=250, 
+        num_beams=3, 
+        repetition_penalty=1.1,
         early_stopping=True
     )
-    return tokenizer.decode(outputs[0], skip_special_tokens=True)
-
-def generate_general_answer(query):
-    """FALLBACK: General knowledge"""
-    tokenizer, model, device = load_generation_model()
-    prompt = f"Provide a concise answer: {query}"
-    inputs = tokenizer(prompt, return_tensors="pt").to(device)
-    outputs = model.generate(**inputs, max_new_tokens=150)
     return tokenizer.decode(outputs[0], skip_special_tokens=True)

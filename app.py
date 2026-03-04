@@ -3,15 +3,9 @@ import os
 from ingest import load_pdf, chunk_text
 from retriever import create_vector_store, retrieve
 from query_utils import rewrite_query
-from generator import generate_answer, generate_general_answer, generate_hybrid_answer
+from generator import generate_answer
 
 st.set_page_config(page_title="DocuMind AI", layout="wide")
-
-def analyze_intent(query, score):
-    analysis_keywords = ["review", "analyze", "summarize", "evaluate", "missing", "strength", "risk", "feedback"]
-    if any(w in query.lower() for w in analysis_keywords):
-        return "HYBRID"
-    return "STRICT" if score > 0.35 else "GENERAL"
 
 st.title("🚀 DocuMind: Universal Document Intelligence")
 
@@ -49,18 +43,10 @@ if uploaded_file:
             # Take the top 2 'clean' chunks
             context = "\n\n".join(filtered_context[:2])
             
-            # If the filter was too aggressive, fallback to top 1
             if not context: context = retrieved[0]
 
-            intent = analyze_intent(query, scores[0])
-
-            if intent == "HYBRID":
-                answer = generate_hybrid_answer(query, context)
-                st.info("🧠 Reasoning Mode Active")
-            elif intent == "STRICT":
-                answer = generate_answer(query, context)
-            else:
-                answer = generate_general_answer(query)
+            # Use the unified generation prompt 
+            answer = generate_answer(query, context)
             
             st.subheader("Result")
             st.write(answer)
